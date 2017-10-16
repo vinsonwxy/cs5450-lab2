@@ -4,15 +4,13 @@
 volatile sig_atomic_t timeoutFlag = false;
 
 /*the timeoutHandler for signal()*/
-void timeoutHandler( int sig )
-{
+void timeoutHandler( int sig ) {
     timeoutFlag = true;
     printf("-------Timeout Detected, Packets Subject to Lose-------\n");
 }
 
 /*timeout resetter*/
-void timeoutReset()
-{
+void timeoutReset() {
     timeoutFlag = false;
 }
 
@@ -21,8 +19,7 @@ state_t sm = {SLOW, CLOSED, 2};
 struct sockaddr * hostaddr, * clientaddr;
 socklen_t host_len, client_len;
 
-gbnhdr makeHeader(int type, uint8_t seqnum)
-{
+gbnhdr makeHeader(int type, uint8_t seqnum) {
     gbnhdr header;
     header.type = type;
     header.seqnum = seqnum;
@@ -91,9 +88,26 @@ ssize_t gbn_recv(int sockfd, void *buf, size_t len, int flags){
 
 int gbn_close(int sockfd){
 
-	/* TODO: Your code here. */
+	if (sockfd < 0) {
+		return(-1);
+	}
+	else {
+		if (sm.isEnd == 1) {
+			gbnhdr FIN_Header = makeHeader(FIN, 0);
+			if (sendto(sockfd, &FIN_Header, sizeof(gbnhdr), 0, clientaddr, client_len) == -1) {
+				return -1;
+			}
+		}
+		else {
+			gbnhdr FINACK_Header = makeHeader(FINACK, 0);
+			if (sendto(sockfd, &FINACK_Header, sizeof(gbnhdr), 0, hostaddr, host_len) == -1) {
+				return -1;
+			}
+			close(sockfd);
+		}
+	}
 
-	return(-1);
+	return 0;
 }
 
 int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
@@ -173,9 +187,16 @@ int gbn_socket(int domain, int type, int protocol){
 
 int gbn_accept(int sockfd, struct sockaddr *client, socklen_t *socklen){
 
-	/* TODO: Your code here. */
-
-	return(-1);
+	if (sockfd < 0) {
+		return(-1);
+	}
+	else {
+		gbnhdr SYNACK_Header = makeHeader(SYNACK, 0);
+		if (sendto(sockfd, &SYNACK_Header, sizeof(SYNACK_Header), 0, hostaddr, host_len) == -1) {
+			return -1;
+		}
+	}
+	return sockfd;
 }
 
 ssize_t maybe_sendto(int  s, const void *buf, size_t len, int flags, \
