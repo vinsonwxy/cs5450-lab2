@@ -1,0 +1,1 @@
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc -g -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/Lab2.dir/gbn.c.o CMakeFiles/Lab2.dir/receiver.c.o CMakeFiles/Lab2.dir/sender.c.o  -o Lab2 
