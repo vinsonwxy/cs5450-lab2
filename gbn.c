@@ -116,7 +116,7 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 
 		count = 0;
 
-		//slow mode
+		/* slow mode */
 		if (currMode == SLOW) {
 			gbnhdr * nextPacket;
 			gbnhdr * recv_buf;
@@ -127,11 +127,11 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 				nextPacket = packet(DATA, currSeq, tmp_buf, currLen);
 
 				if (sendto(sockfd, nextPacket, sizeof(*nextPacket), 0, clientaddr, client_len) == -1) {
-					//failed to send packet
+					/* failed to send packet */
 					continue;
 				}
 
-				//sent packet, waiting for response
+				/* sent packet, waiting for response */
 				sm.mode = BYTE_SENT;
 				alarm(TIMEOUT);
 
@@ -151,18 +151,18 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 
 			}
 
-			//fail to receive ACK after 5 attempts
+			/* fail to receive ACK after 5 attempts */
 			if (sm.state == BYTE_SENT) {
 				return -1;
 			}
 
-			//receive ACK
+			/* receive ACK */
 			sm.state = ESTABLISHED;
 			free(nextPacket);
 			free(recv_buf);
 
 
-		// fast mode
+		/* fast mode */
 		} else {
 			memcpy(tmp_buf, buf + cumLen, currLen);
 			sm.state = ESTABLISHED;
@@ -171,15 +171,15 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 			int len1  = currLen;
 			int seqnum1 = currSeq;
 
-			//send first packet
+			/* send first packet */
 			gbnhdr * packet1 = packet(DATA, seqnum1, tmp_buf, len1);
 			sendto(sockfd, packet1, sizeof(*packet1), 0, hostaddr, host_len);
 			sm.state = BYTE_SENT;
 
-			//clear the buffer
+			/* clear the buffer */
 			memset(tmp_buf, '\0', DATALEN);
 
-			//send second only if there is still remaining buffer
+			/* send second only if there is still remaining buffer */
 			int cumLen2;
 			int len2;
 			int seqnum2;
@@ -203,7 +203,7 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 				sendto(sockfd, packet2, sizeof(*packet2), 0, hostaddr, host_len);
 
 			}
-			//not enough remaining buffer
+			/* not enough remaining buffer */
 			else {
 				seqnum2 = currSeq;
 				len2 = len1;
@@ -218,7 +218,7 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 
 				if(packetCheck(recv_buf, DATAACK, rec_size) == 0){
 
-					//receive ACK for second packet
+					/* receive ACK for second packet */
 					if(recv_buf->seqnum == seqnum2) {
 						sm.state = ACK_RCVD;
 						cumLen += len2;
@@ -227,13 +227,13 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 						sm.seqnum = currSeq;
 					}
 
-					//receive ACK for first packet
+					/* receive ACK for first packet */
 					else if(recv_buf->seqnum == seqnum1) {
 						remainLen -= len1;
 						currSeq = seqnum2;
 					}
 
-					//something else
+					/* something else */
 					else {
 						count += 1;
 					}
@@ -256,7 +256,7 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 				free(recv_buf);
 			}
 
-			//start over again with first packet
+			/* start over again with first packet */
 			if (count == 5) {
 				currMode = SLOW;
 				cumLen = cumLen1;
