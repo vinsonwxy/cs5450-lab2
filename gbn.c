@@ -1,17 +1,17 @@
 #include "gbn.h"
 
 /*--- Timeout ---*/
-volatile sig_atomic_t timeoutFlag = false;
+volatile sig_atomic_t timeoutFlag = 0;
 
 /*the timeoutHandler for signal()*/
 void timeoutHandler( int sig ) {
-    timeoutFlag = true;
+    timeoutFlag = 1;
     printf("-------Timeout Detected, Packets Subject to Lose-------\n");
 }
 
 /*timeout resetter*/
 void timeoutReset() {
-    timeoutFlag = false;
+    timeoutFlag = 0;
 }
 
 /* global variable */
@@ -59,7 +59,7 @@ int packetCheck(gbnhdr * packet, int type, int length) {
         return -1;
     }
     /* Check timeout*/
-    else if (timeoutFlag == true || length == -1) {
+    else if (timeoutFlag == 1 || length == -1) {
             timeoutReset();
             return -1;
     }
@@ -272,15 +272,15 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 ssize_t gbn_recv(int sockfd, void *buf, size_t len, int flags){
 
     gbnhdr * bufferedData = malloc(sizeof(gbnhdr));
-    int recvSize = recvfrom(sockfd, data_buffer, sizeof(gbnhdr), 0, clientAddr, &clientLen);
+    int recvSize = recvfrom(sockfd, bufferedData, sizeof(gbnhdr), 0, clientaddr, &client_len);
     
     int data_length = sizeof(*bufferedData->data);
     
     /* check whether data received is expected */
-    if (data_buffer->type == DATA) {
+    if (bufferedData->type == DATA) {
         printf(" --- Data Received --- \n");
         
-        gbnhdr ackowledge_header = makeHeader(DATAACK, data_buffer->seqnum);
+        gbnhdr ackowledge_header = makeHeader(DATAACK, bufferedData->seqnum);
         int sendack = sendto(sockfd, &ackowledge_header, sizeof(gbnhdr), 0, hostaddr, host_len);
         if (sendack == -1){
             return -1;
@@ -290,7 +290,7 @@ ssize_t gbn_recv(int sockfd, void *buf, size_t len, int flags){
         return bufferedData->len;
     }
     else {
-        gbnhdr finackHeader = make_header(FINACK, 0);
+        gbnhdr finackHeader = makeHeader(FINACK, 0);
         if(sendto(sockfd, &finackHeader, sizeof(gbnhdr), 0, hostaddr, host_len) != -1)
             /* to the end */
             return 0;
@@ -356,7 +356,7 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
         int recvSize = recvfrom(sockfd, recvBuf, sizeof(gbnhdr), 0, hostaddr, &host_len);
         
         /* check timeout */
-        if (timeoutFlag == true || recvSize == -1) {
+        if (timeoutFlag == 1 || recvSize == -1) {
             count++;
             timeoutReset();
         }
