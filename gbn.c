@@ -29,6 +29,21 @@ gbnhdr makeHeader(int type, uint8_t seqnum) {
     return header;
 }
 
+/* Create a packet */
+gbnhdr* packet(int type, uint8_t sequence_num, char *buffer, int data_length)
+{
+	gbnhdr * packet = malloc(sizeof(gbnhdr));
+	packet->type = type;
+	packet->seqnum = sequence_num;
+
+	memcpy(packet->data, buffer, data_length);
+	packet->len = data_length;
+
+	packet->checksum = checksum((uint16_t *) buffer, data_length);
+
+	return packet;
+}
+
 
 /* Check packet make sure it's valid */
 
