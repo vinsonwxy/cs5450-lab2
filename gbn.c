@@ -14,11 +14,12 @@ void timeoutReset() {
     timeoutFlag = false;
 }
 
+/* global variable */
 state_t sm = {SLOW, CLOSED, 2};
-
 struct sockaddr * hostaddr, * clientaddr;
 socklen_t host_len, client_len;
 
+/* make the header of packets */
 gbnhdr makeHeader(int type, uint8_t seqnum) {
     gbnhdr header;
     header.type = type;
@@ -28,19 +29,8 @@ gbnhdr makeHeader(int type, uint8_t seqnum) {
     return header;
 }
 
-gbnhdr* packet(int type, uint8_t sequence_num, char *buffer, int data_length)
-{
-	gbnhdr * packet = malloc(sizeof(gbnhdr));
-	packet->type = type;
-	packet->seqnum = sequence_num;
 
-	memcpy(packet->data, buffer, data_length);
-	packet->len = data_length;
-
-	packet->checksum = checksum((uint16_t *) buffer, data_length);
-
-	return packet;
-}
+/* Check packet make sure it's valid */
 
 int packetCheck(gbnhdr * packet, int type, int length) {
     
@@ -80,6 +70,7 @@ uint16_t checksum(uint16_t *buf, int nwords)
 	return ~sum;
 }
 
+/* send packeet via gbn_send */
 ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 
 	/* Hint: Check the data length field 'len'.
@@ -262,19 +253,46 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 	return remainLen;
 }
 
+/* receive packeet via gbn_recv */
 ssize_t gbn_recv(int sockfd, void *buf, size_t len, int flags){
 
-	/* TODO: Your code here. */
-
-	return(-1);
+    gbnhdr * bufferedData = malloc(sizeof(gbnhdr));
+    int recvSize = recvfrom(sockfd, data_buffer, sizeof(gbnhdr), 0, clientAddr, &clientLen);
+    
+    int data_length = sizeof(*bufferedData->data);
+    
+    /* check whether data received is expected */
+    if (data_buffer->type == DATA) {
+        printf(" --- Data Received --- \n");
+        
+        gbnhdr ackowledge_header = makeHeader(DATAACK, data_buffer->seqnum);
+        int sendack = sendto(sockfd, &ackowledge_header, sizeof(gbnhdr), 0, hostaddr, host_len);
+        if (sendack == -1){
+            return -1;
+        }
+        
+        memcpy(buf, bufferedData->data, bufferedData->len);
+        return bufferedData->len;
+    }
+    else {
+        gbnhdr finackHeader = make_header(FINACK, 0);
+        if(sendto(sockfd, &finackHeader, sizeof(gbnhdr), 0, hostaddr, host_len) != -1)
+            /* to the end */
+            return 0;
+        else
+            /* wrong data received */
+            return -1;
+    }
 }
 
+/* to close the socket */
 int gbn_close(int sockfd){
 
 	if (sockfd < 0) {
 		return(-1);
 	}
 	else {
+        /* check if actually is the end */
 		if (sm.isEnd == 1) {
 			gbnhdr FIN_Header = makeHeader(FIN, 0);
 			if (sendto(sockfd, &FIN_Header, sizeof(gbnhdr), 0, clientaddr, client_len) == -1) {
@@ -293,6 +311,7 @@ int gbn_close(int sockfd){
 	return 0;
 }
 
+/* iniate the connection via gbn_connect */
 int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
 
     clientaddr = server;
@@ -301,11 +320,12 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
     if (sockfd < 0)
         return -1;
     
+    /* SYN_SENT Implementation */
     gbnhdr SYN_Header = makeHeader(SYN, 0);
     sm.state = SYN_SENT;
     sm.isEnd = 0;
     int count = 0;
-    printf("----SYN_SENT Implementation-----");
+    
     
     while (count < 5) {
         int sendtoReturn = sendto(sockfd, &SYN_Header, sizeof SYN_Header, 0, server, socklen);
@@ -320,6 +340,7 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
         gbnhdr * recvBuf = malloc(sizeof(gbnhdr));
         int recvSize = recvfrom(sockfd, recvBuf, sizeof(gbnhdr), 0, hostaddr, &host_len);
         
+        /* check timeout */
         if (timeoutFlag == true || recvSize == -1) {
             count++;
             timeoutReset();
@@ -339,6 +360,7 @@ int gbn_connect(int sockfd, const struct sockaddr *server, socklen_t socklen){
 	return(-1);
 }
 
+/* to listen activities on socket via gbn_listen */
 int gbn_listen(int sockfd, int backlog){
 
     printf("---Listening...---\n");
@@ -350,6 +372,7 @@ int gbn_listen(int sockfd, int backlog){
 
 }
 
+/* to bind a socket */
 int gbn_bind(int sockfd, const struct sockaddr *server, socklen_t socklen){
 
     hostaddr = server;
@@ -358,6 +381,7 @@ int gbn_bind(int sockfd, const struct sockaddr *server, socklen_t socklen){
     return bind(sockfd, server, socklen);
 }	
 
+/* socket set up */
 int gbn_socket(int domain, int type, int protocol){
 		
 	/*----- Randomizing the seed. This is used by the rand() function -----*/
@@ -368,12 +392,14 @@ int gbn_socket(int domain, int type, int protocol){
 	return socket(domain, type, protocol);
 }
 
+/* to accept incoming connections */
 int gbn_accept(int sockfd, struct sockaddr *client, socklen_t *socklen){
 
 	if (sockfd < 0) {
 		return(-1);
 	}
 	else {
+        /* check validity of SYNACK_Header */
 		gbnhdr SYNACK_Header = makeHeader(SYNACK, 0);
 		if (sendto(sockfd, &SYNACK_Header, sizeof(SYNACK_Header), 0, hostaddr, host_len) == -1) {
 			return -1;
