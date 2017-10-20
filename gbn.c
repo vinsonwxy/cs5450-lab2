@@ -85,7 +85,7 @@ uint16_t checksum(uint16_t *buf, int nwords)
 	return ~sum;
 }
 
-/* send packeet via gbn_send */
+/* send packet via gbn_send */
 ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 
 	/* Hint: Check the data length field 'len'.
@@ -268,7 +268,7 @@ ssize_t gbn_send(int sockfd, const void *buf, size_t len, int flags){
 	return remainLen;
 }
 
-/* receive packeet via gbn_recv */
+/* receive packet via gbn_recv */
 ssize_t gbn_recv(int sockfd, void *buf, size_t len, int flags){
 
     gbnhdr * bufferedData = malloc(sizeof(gbnhdr));
